@@ -26,98 +26,141 @@
 
 ## QUY TRÌNH HOẠT ĐỘNG
 
-1. Phần mềm Slicer sẽ vẫn hoạt động như bình thường, trước khi file được ghi ra file (hoặc gửi qua mạng lên máy in), script sẽ được tự động gọi lên và xử lý file gcode.
+### QUY TRÌNH SỬ DỤNG SLICER
 
-    > **Note:** với [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) file lưu có 2 dạng, script sẽ chỉ đọc được file có đuôi `.gcode`, nếu file xuất ra là file `.bgcode` ([Binary Gcode](https://help.prusa3d.com/article/binary-g-code_646763)) thì script sẽ không đọc được, cần phải cài đặt lại cho Slicer xuất file dạng `.gcode` thường.
+Phần mềm Slicer sẽ vẫn hoạt động như bình thường, trước khi file được ghi ra file (hoặc gửi qua mạng lên máy in), script sẽ được tự động gọi lên và xử lý file gcode.
 
-1. Khi script được gọi lên, ban đầu sẽ đọc file .gcode để lấy các thông số cơ bản bao gồm.
+> **Note:** với [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) file lưu có 2 dạng, script sẽ chỉ đọc được file có đuôi `.gcode`, nếu file xuất ra là file `.bgcode` ([Binary Gcode](https://help.prusa3d.com/article/binary-g-code_646763)) thì script sẽ không đọc được, cần phải cài đặt lại cho Slicer xuất file dạng `.gcode` thường.
 
-    * `First Point` - điểm đầu tiên sẽ bắt đầu in, dùng để tính đặt Purge-Line ở đâu sẽ gần điểm này nhất.
+### SCRIPT HOẠT ĐỘNG
 
-    * `Travel Speed` - đây sẽ được lấy làm tốc độ tối đa để di chuyển đầu in. Tốc độ này sẽ được tự động lấy theo tốc độ mọi người thiết lập trong slicer.
-    * `Bed Polygon` - đây là hình dáng và kích thước của bàn in đang dùng, dùng để kiểm tra xem Purge-Line được có bị nằm ngoài bàn in hay không.
-    * `Firmware Retraction` - nếu máy in được thiết lập sử dụng firmware retraction, nếu có thì lệnh retract hay unretract sẽ được đổi thành G10/G11 tương ứng.
+Phần mềm slicer sẽ tự động gọi script *(theo đường dẫn đã thiết lập sẵn)*. Ban đầu sẽ đọc file .gcode để lấy các thông số cơ bản bao gồm.
 
-    * `Object Polygon` - tập hợp các điểm tạo nên đối tượng in trên mặt phẳng 2D. Dùng để tính đặt Purge-Line ở đâu sẽ không trùng với đối tượng in.
+* `First Point` - điểm đầu tiên sẽ bắt đầu in, dùng để tính đặt Purge-Line ở đâu sẽ gần điểm này nhất.
 
-    > Script sẽ đọc hết toàn bộ các lệnh G1 tại layer đầu tiên để từ đó xác định được đối tượng in sẽ có hình dáng và kích thước như thế nào.  
-    > Việc này sẽ có đôi chút mất thời gian hơn là với phương án trước đây là lấy thông tin về đối tượng qua `EXCLUDE OBJECT` (OrcaSlicer) hoặc `object info` (với PrusaSlicer), tuy nhiên thời gian tốn thêm để xử lý chỉ ở ms (mili giây) nên hầu như không có khác biệt. Và hơn nữa, cách thức xác định đối tượng bằng các lệnh in này sẽ giúp xác định chính xác vị trí đối tượng tại bàn (bao gồm cả nếu có Brim, Skirt hay Support...)
-    >> **Note:** Với [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer), do cách mà phần mềm xuất file .gcode mà phần Brim/Skirt sẽ bị bỏ qua (Brim/Skirt của Prusa gộp tất cả các đối tượng lại với nhau làm cho việc xác định phần nào sẽ rất khó).  
-    >> Tuy nhiên, sẽ không có vấn đề gì vì phần tính toán sẽ dự trù cả việc điểm bắt đầu in không nằm trong vùng đối tượng *(có thể sẽ cần test thêm nhiều trường hợp nữa)*.
+* `Travel Speed` - đây sẽ được lấy làm tốc độ tối đa để di chuyển đầu in. Tốc độ này sẽ được tự động lấy theo tốc độ mọi người thiết lập trong slicer.
+* `Bed Polygon` - đây là hình dáng và kích thước của bàn in đang dùng, dùng để kiểm tra xem Purge-Line được có bị nằm ngoài bàn in hay không.
+* `Firmware Retraction` - nếu máy in được thiết lập sử dụng firmware retraction, nếu có thì lệnh retract hay unretract sẽ được đổi thành G10/G11 tương ứng.
+
+* `Object Polygon` - tập hợp các điểm tạo nên đối tượng in trên mặt phẳng 2D. Dùng để tính đặt Purge-Line ở đâu sẽ không trùng với đối tượng in.
+
+    > Script sẽ đọc hết toàn bộ các lệnh G1 tại layer đầu tiên từ đó xác định hình dáng và kích thước đối tượng in.  
+    > Việc này sẽ có đôi chút mất thời gian hơn đọc thông thông số `EXCLUDE OBJECT` (OrcaSlicer) hoặc `object info` (với PrusaSlicer), tuy nhiên thời gian tốn thêm để xử lý chỉ ở ms (mili giây) nên hầu như không có khác biệt. Và hơn nữa, cách thức xác định đối tượng bằng các lệnh in này sẽ cho kết quả chính xác hơn (sẽ bao gồm cả Brim, Skirt hay Support... nếu có).
     >
     > Hơn nữa, việc xác định đối tượng thông qua việc đọc lệnh in này sẽ tăng độ tương thích với các phần mềm khác nhau (bất kể dùng Prusa hay Orca, Marlin hay Klipper đều có thể dùng được)
+    <!-- >> **Note:** Với [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer), do cách mà phần mềm xuất file .gcode mà phần Brim/Skirt sẽ bị bỏ qua (Brim/Skirt của Prusa gộp tất cả các đối tượng lại với nhau làm cho việc xác định phần nào sẽ rất khó).  
+    >> Tuy nhiên, sẽ không có vấn đề gì vì phần tính toán sẽ dự trù cả việc điểm bắt đầu in không nằm trong vùng đối tượng *(có thể sẽ cần test thêm nhiều trường hợp nữa)*. -->
 
-1. Sau khi có được các thông số cần thiết sẽ chuyển sang bước tính toán.
+### TÍNH TOÁN CÁC ĐIỂM ĐỂ IN PURGE-LINE
 
-    Đầu tiên là sẽ so sánh xem điểm in đầu tiên sẽ ở đâu so với đối tượng. Từ đấy tìm một điểm gần nhất với điểm đầu tiên sẽ in và nằm trên cạnh gần nhất của đối tượng in (gọi là `điểm A`).  
-    Từ đấy vẽ một đường thẳng đi qua hai điểm này (đường Purge-Line sẽ nằm trên đường thẳng này).
+Sau khi có được các thông số cần thiết sẽ đến bước tính toán.
 
-    1. Điểm bắt đầu nằm trong đối tượng.
+#### XÁC ĐỊNH VỊ TRÍ ĐIỂM ĐẦU TIÊN
 
-        ![img](<./IMG/Script_cal_A1.jpg>)
+Đầu tiên là sẽ so sánh xem điểm in đầu tiên sẽ ở đâu so với đối tượng. Từ đấy tìm một điểm gần nhất với điểm đầu tiên sẽ in và nằm trên cạnh gần nhất của đối tượng in (gọi là `điểm A`).  
+Từ đấy vẽ một đường thẳng đi qua hai điểm này (đường Purge-Line sẽ nằm trên đường thẳng này).
 
-    1. Điểm bắt đầu nằm ngoài đối tượng (thường sẽ là `Brim`, `Skirt` hoặc `Support`)
+1. Điểm bắt đầu nằm trong đối tượng.
 
-        ![img](<./IMG/Script_cal_B1.jpg>)
+    <!-- ![img](<./IMG/Script_cal_A1.jpg>) -->
 
-        > **Note:** như có nói ở trên, một số trường hợp sẽ không tính `Brim` hay `Skirt` vào đối tượng in. Tuy nhiên, nếu tính cả `Brim` hoặc `Skirt`, thì cách tính toán sẽ giống như phương án 1.
+    <p align="center">
+    <image src="./IMG/Script_cal_A1.jpg" width="480">
+    </p>
 
-1. Trên đường thẳng mới kẻ, xác định một điểm mới (đây sẽ là điểm kết thúc cho Purge-Line).
+1. Điểm bắt đầu nằm ngoài đối tượng (có thể là `Brim`, `Skirt` hoặc `Support`)
 
-    Tại đây có sẽ 2 trường hợp tương ứng với 2 trường hợp phía trên.
+    <!-- ![img](<./IMG/Script_cal_B1.jpg>) -->
 
-    1. Điểm bắt đầu nằm trong đối tượng.  
-    Điểm mới sẽ được tính dựa vào điểm A, và cách A một khoảng bằng với thông số `purge_margin`
+    <p align="center">
+    <image src="./IMG/Script_cal_B1.jpg" width="480">
+    </p>
 
-        ![img](<./IMG/Script_cal_A2.jpg>)
+    > **Note:** như có nói ở trên, một số trường hợp sẽ không tính `Brim` hay `Skirt` vào đối tượng in. Tuy nhiên, nếu tính cả `Brim` hoặc `Skirt`, thì cách tính toán sẽ giống như phương án 1.
 
-    2. Điểm bắt đầu nằm ngoài đối tượng.  
-    Điểm mới sẽ được tính dựa vào điểm in đầu tiên, và cũng cách một khoảng bằng với thông số `purge_margin`
+#### TÍNH TOÁN VỊ TRÍ ĐƯỜNG PURGE-LINE
 
-        ![img](<./IMG/Script_cal_B2.jpg>)
+Trên đường thẳng mới kẻ, xác định một điểm mới (đây sẽ là điểm kết thúc cho Purge-Line).  
+Tại đây có sẽ 2 trường hợp tương ứng với 2 trường hợp phía trên.
 
-1. Khi tính được điểm đầu kết thúc của Purge-Line, thì vẫn trên đường thẳng đấy xác định điểm bắt đầu cho Purge-Line. Điểm này cách điểm kết thúc một đoạn bằng thông số `purge_length`
+1. Điểm bắt đầu nằm trong đối tượng.  
+Điểm mới sẽ được tính dựa vào điểm A, và cách A một khoảng bằng với thông số `purge_margin`
 
-1. Sau khi các điểm đầu cuối của `Purge-Line` đã được xác định, thì sẽ đối chiều xem đường Purge này có bị tràn ra ngoài bàn in hay không, hoặc là có trùng với các đối tượng khác hay không (trong trường hợp in nhiều đối tượng một lần).
+    <!-- ![img](<./IMG/Script_cal_A2.jpg>) -->
 
-    Tùy vào từng trường hợp cụ thể, thì script sẽ tự động tính toán lại các điểm Purge cho phù hợp.
+    <p align="center">
+    <image src="./IMG/Script_cal_A2.jpg" width="480">
+    </p>
 
-    > **Note1:** hầu hết các trường hợp thì việc kiểm tra này chỉ mang tính chất an toàn, để đảm bảo file xuất ra không bị lỗi khi in, đa phần slicer sẽ tính toán điểm in phù hợp nhất rồi, nên rất ít trường hợp đường Purge bị trùng hay lỗi.  
-    > Tuy nhiên không có nghĩa là sẽ không có trường hợp như thế, vậy nên việc kiểm tra lại và sửa lỗi mới được thêm vào.
-    >
-    > **Note2:** mình cũng đã thử kha khá trường hợp có thể phát sinh lỗi, tuy nhiên do tính chất của việc Slicer đặt điểm in đầu hay là chọn đối tượng để in đầu tiên (mình không đi sâu vào phần code của từng Slicer nên cũng không nắm rõ) khá là random nên có thể, có thể sẽ có trường hợp lỗi chưa tính đến.
+2. Điểm bắt đầu nằm ngoài đối tượng.  
+Điểm mới sẽ được tính dựa vào điểm in đầu tiên, và cũng cách một khoảng bằng với thông số `purge_margin`
 
-1. Khi kiểm tra xong, script sẽ tìm đến đoạn `; Adaptive Purge START` đã đánh dấu sẵn ở file .gcode *(tại bước cài đặt script)*.
+    <!-- ![img](<./IMG/Script_cal_B2.jpg>) -->
 
-    Mốc này là thời điểm sau khi kết thúc các việc như là làm nóng máy in, chùi đầu...(tùy từng thiết lập của từng máy) và trước khi bắt đầu thực sự in.
+    <p align="center">
+    <image src="./IMG/Script_cal_B2.jpg" width="480">
+    </p>
 
-    > **Note1:** điểm đặt code sẽ được chọn tại điểm dưới sau cùng của `Machine Start G-code`.
+Khi tính được điểm đầu kết thúc của Purge-Line, thì vẫn trên đường thẳng đấy xác định điểm bắt đầu cho Purge-Line. Điểm này cách điểm kết thúc một đoạn bằng thông số `purge_length`
 
-    Lúc này script sẽ tạo đoạn mã Purge-Line và ghi vào file gcode. File sau khi được lưu sẽ có đoạn mã này.
+#### KIỂM TRA LẠI CÁC ĐIỂM ĐÃ TÍNH TOÁN
 
-    ![img](<IMG/Orca_Export-Gcode1.jpg>)
+Sau khi các điểm đầu cuối của `Purge-Line` đã được xác định, thì sẽ đối chiều xem đường Purge này có bị tràn ra ngoài bàn in, hoặc là có trùng với các đối tượng khác hay không (trong trường hợp in nhiều đối tượng một lần).
 
-    > **Note2:** khác với phiên bản cũ của script, file gcode mới sẽ chỉ thêm lệnh macro còn lại thì sẽ dựa vào macro của Klipper tự xử lý.
-    >
-    > Ở phiên bản mới này, script sẽ xuất ra lệnh `g-code` đơn thuần, điều này sẽ giúp cho máy in chạy phần mềm gì cũng đều đọc được ([Klipper](https://github.com/Klipper3d/klipper) hoặc [Marlin](https://github.com/MarlinFirmware/Marlin) hoặc là cả [RepRap](https://github.com/Duet3D/RepRapFirmware) tuy nhiên mình chưa dùng RepRap nên cũng không chắc 100%).
-    >
-    > Và hơn nữa, vì chỉ là `g-code` thuần, khi mở lại file gcode bằng Slicer (hoặc bất kì phần mềm nào đọc được gcode), sẽ thấy được luôn đoạn Purge-Line nằm ở đâu. Rất tiện cho việc kiểm tra.
+Tùy vào từng trường hợp cụ thể, thì script sẽ tự động tính toán lại các điểm Purge cho phù hợp.
+
+> **Note1:** hầu hết các trường hợp thì việc kiểm tra này chỉ mang tính chất an toàn, để đảm bảo file xuất ra không bị lỗi khi in, đa phần slicer sẽ tính toán điểm in phù hợp nhất rồi, nên rất ít trường hợp đường Purge bị trùng hay lỗi.  
+> Tuy nhiên không có nghĩa là sẽ không có trường hợp như thế, vậy nên việc kiểm tra lại và sửa lỗi mới được thêm vào.
+>
+> **Note2:** mình cũng đã thử kha khá trường hợp có thể phát sinh lỗi, tuy nhiên do tính chất của việc Slicer đặt điểm in đầu hay là chọn đối tượng để in đầu tiên (mình không đi sâu vào phần code của từng Slicer nên cũng không nắm rõ) khá là random nên có thể, có thể sẽ có trường hợp lỗi chưa tính đến.
+
+#### XÁC ĐỊNH VỊ TRÍ ĐIỂM SẼ CHÈN CODE MỚI
+
+Khi kiểm tra xong, script sẽ tìm đến đoạn code đầu tiên có `G90` hoặc `G91` hoặc `G20` hoặc `G21`.
+
+Đây là đoạn code thiết lập thông số mặc định cho máy in (`G90` - Absolute Positioning, `G91` - Relative Positioning, `G20` - Inch Units, `G21` - Millimeter Units). Thường sẽ được slicer mặc định được slicer đặt ngay phía sau đoạn khới động (làm nóng bàn, làm nóng đầu in... tùy thiết lập của từng máy) và trước đoạn code để bắt đầu in.
+
+Mốc này là thời điểm sau khi kết thúc các việc như là làm nóng máy in, chùi đầu...(tùy từng thiết lập của từng máy) và trước khi bắt đầu thực sự in.
+
+<!-- > **Note1:** điểm đặt code sẽ được chọn tại điểm dưới sau cùng của `Machine Start G-code`. -->
+
+> **Note1:** khác với trước đây, điểm đặt code sẽ được đánh giấu bằng một đoạn mã thiết lập sẵn tại `Machine Start G-code`. Tuy nhiên để quá trình cài đặt code đơn giản hơn nên sẽ chuyển qua phương án mới này.
+>
+> Mặc định các phần mềm slicer sẽ tự động có ít nhất 2 trong 4 lệnh trên tại đầu của code in, tuy nhiên nếu thiết lập slicer tùy chỉnh khác đi có thể sẽ không có, hoặc vị trí bị di dời chỗ khác, nên kiểm tra lại trước để đảm bảo.
+
+#### TẠO FILE GCODE
+
+Lúc này script sẽ tạo đoạn mã Purge-Line và ghi vào file gcode. File sau khi được lưu sẽ có đoạn mã này.
+
+<!-- ![img](<IMG/Orca_Export-Gcode1.jpg>) -->
+
+<p align="center">
+<image src="./IMG/Orca_Export-Gcode1.jpg" width="360">
+</p>
+
+> **Note2:** khác với phiên bản cũ của script, file gcode mới sẽ chỉ thêm lệnh macro còn lại thì sẽ dựa vào macro của Klipper tự xử lý.
+>
+> Ở phiên bản mới này, script sẽ xuất ra lệnh `g-code` đơn thuần, điều này sẽ giúp cho máy in chạy phần mềm gì cũng đều đọc được ([Klipper](https://github.com/Klipper3d/klipper) hoặc [Marlin](https://github.com/MarlinFirmware/Marlin) hoặc là cả [RepRap](https://github.com/Duet3D/RepRapFirmware) tuy nhiên mình chưa dùng RepRap nên cũng không chắc 100%).
+>
+> Và hơn nữa, vì chỉ là `g-code` thuần, khi mở lại file gcode bằng Slicer (hoặc bất kì phần mềm nào đọc được gcode), sẽ thấy được luôn đoạn Purge-Line nằm ở đâu. Rất tiện cho việc kiểm tra.
 
 ## YÊU CẦU CẦN THIẾT
 
 1. [Python](https://www.python.org/), tải và cài đặt (nếu chưa có). Nên dùng python 3 trở lên.
-    <!-- <p align="center">
-    <img src="./IMG/InstallPython.jpg" width="420">
-    </p> -->
-    ![img](<./IMG/InstallPython.jpg>)
 
-2. ***(Với riêng Klipper)*** Trong file `printer.cfg`, mục `[extruder]`.  
+    <!-- ![img](<./IMG/InstallPython.jpg>) -->
+
+    <p align="center">
+    <image src="./IMG/InstallPython.jpg" width="420">
+    </p>
+
+2. ***(Với riêng Klipper)*** Trong file `printer.cfg` -> mục `[extruder]`.  
 
     *"max_extrude_cross_section"* phải được set ít nhất là `5`.
 
     > **Note1:** Nếu chưa có mục *"max_extrude_cross_section"* thì có thể thêm vào.
 
-    ```yaml
+    ``` yaml
     [extruder]
     max_extrude_cross_section: 5
     ```
@@ -134,11 +177,19 @@ Tuy nhiên các phần mềm slicer hiện tại (test với [OrcaSlicer](https:
 
 Các thông số cần có trong file g-code (mở file .gcode bất kì, `Ctrl+F` để tìm).
 
-* `TYPE` - để xác định được phân code nào sẽ in gì, giúp xác định được đối tượng in
 * `LAYER_CHANGE` - đánh giấu khi thay đổi layer, giúp xác định điểm bắt đầu và kết thúc của layer đầu tiên
 * `travel_speed` - giúp tìm được tốc độ tối đa mà máy in có thể di chuyển, con số này không thực sự quá cần thiết, nếu gcode gửi lệnh di chuyển quá tốc độ tối đa cài trên máy, thì máy cũng sẽ tự giảm xuống.
 * `use_firmware_retraction` - nếu máy cài `firmware retraction` thì sẽ dùng thông số cài trên máy.
 * `bed_shape` - dùng để định hình bàn in, kiểm tra Purge-Line có bị tràn ra ngoài.
+* `G20, G21, G90, G91` - dùng để định vị điểm trước khi máy sẽ bắt đầu in, kiểm tra file gcode sẽ có ít nhất 1 trong 4 lệnh trên phía sau đoạn lệnh khởi động của máy và trước phần in (trước đoạn `LAYER_CHANGE` đầu tiên).
+* `TYPE` - để xác định được phân code nào sẽ in gì, giúp xác định được đối tượng in
+
+    > Các loại TYPE thường có sẽ là
+    > * `Outer wall` - đây là lớp tường bên ngoài với OrcaSlicer
+    > * `External perimeter` - đây cũng là lớp tường ngoài nhưng là với PrusaSlicer
+    > * `Brim` - loại brim (thường khi dùng mới có)
+    > * `Skirt` - loại Skirt (thường khi dùng mới có)
+    > * `Support` - các loại liên quan đển support (support, raft... thường khi dùng mới có)
 
 ## HƯỚNG DẪN CÀI ĐẶT
 
@@ -156,7 +207,11 @@ Các thông số cần có trong file g-code (mở file .gcode bất kì, `Ctrl+
     "DUONG-DAN-DEN-PYTHON\python.exe" "DUONG-DAN-DEN-SCRIPT\RAP.py";
     ```
 
-    ![orca](<./IMG/Orca_Script1.jpg>)
+    <!-- ![orca](<./IMG/Orca_Script1.jpg>) -->
+
+    <p align="center">
+    <image src="./IMG/Orca_Script1.jpg" width="600">
+    </p>
 
     > **Note1:** chú ý phải có dấu (") hai đầu và phải có đoạn cách giữa hai đường dẫn để phần mềm có thể đọc được.  
     > `DUONG-DAN-DEN-PYTHON` là nơi python cài trên máy.
@@ -174,7 +229,7 @@ Các thông số cần có trong file g-code (mở file .gcode bất kì, `Ctrl+
     >
     > `DUONG-DAN-DEN-SCRIPT` là nơi đặt file script trên máy. Đường dẫn này sau khi thiết lập thì file không được di chuyển đi chỗ khác (nếu di chuyển phải thiết lập lại), có thể để cùng thư mục với phần mềm Slicer để không xóa nhầm hoặc lỡ di chuyển đi.  
 
-* Mở bảng thiết lập cho máy in và vào tab `Machine G-code`.
+<!-- * Mở bảng thiết lập cho máy in và vào tab `Machine G-code`.
 
     Ở mục `Machine start G-code` thêm dòng `; Adaptive Purge START` vào dưới cùng. Đây sẽ như là một điểm mốc để script chèn code cho đoạn Purge và file gcode.
 
@@ -186,10 +241,9 @@ Các thông số cần có trong file g-code (mở file .gcode bất kì, `Ctrl+
     `Script` sẽ dùng đoạn này như mốc để xác định đâu là đoạn code sau giai đoạn chuẩn bị của máy in (làm nóng, home, làm sạch đầu in...) và trước khi phần in thực sự bắt đầu.
     >
     >> Mình đã thử tìm một số điểm làm mốc khác để đơn giản hơn công đoạn cài đặt nhưng phần đầu trước khi in này sẽ thay đổi nhiều tùy vào nhiều thết lập trong slicer cũng như máy in dùng Klipper hay Marlin.  
-    >> Nên để chắc chắn chính xác đoạn cần chèn thên script thì tạo một mốc đặc trưng như thế này sẽ là cách tối ưu.
+    >> Nên để chắc chắn chính xác đoạn cần chèn thên script thì tạo một mốc đặc trưng như thế này sẽ là cách tối ưu. -->
 
-* Cuối cùng.  
-Sau khi thực hiện các công đoạn cài đặt thì nhớ SAVE lại để dùng sau này.
+* SAVE lại để dùng sau này.
 
 ### Cài đặt cho [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer)
 
@@ -198,7 +252,11 @@ Sau khi thực hiện các công đoạn cài đặt thì nhớ SAVE lại để
 * Mở tab `Print Settings`
 * Mục `Output Options` -> bảng `Post-processing scripts`
 
-    ![img](<./IMG/Prusa_Script1.jpg>)
+    <!-- ![img](<./IMG/Prusa_Script1.jpg>) -->
+
+    <p align="center">
+    <image src="./IMG/Prusa_Script1.jpg" width="600">
+    </p>
 
 * Điền vào đường dẫn tới file `Python.exe` và script `RAP.py`:
 
@@ -222,7 +280,7 @@ Sau khi thực hiện các công đoạn cài đặt thì nhớ SAVE lại để
     >
     > `DUONG-DAN-DEN-SCRIPT` là nơi đặt file script trên máy. Đường dẫn này sau khi thiết lập thì file không được di chuyển đi chỗ khác (nếu di chuyển phải thiết lập lại), có thể để cùng thư mục với phần mềm Slicer để không xóa nhầm hoặc lỡ di chuyển đi.  
 
-* Mở tab `Printers` để mở bảng thiết lập cho máy in.
+<!-- * Mở tab `Printers` để mở bảng thiết lập cho máy in.
 
     Ở mục `Custom G-code` -> `Start G-code`  
     Thêm dòng `; Adaptive Purge START` vào dưới cùng. Đây sẽ như là một điểm mốc để script chèn code cho đoạn Purge và file gcode.
@@ -235,10 +293,9 @@ Sau khi thực hiện các công đoạn cài đặt thì nhớ SAVE lại để
     `Script` sẽ dùng đoạn này như mốc để xác định đâu là đoạn code sau giai đoạn chuẩn bị của máy in (làm nóng, home, làm sạch đầu in...) và trước khi phần in thực sự bắt đầu.
     >
     >> Mình đã thử tìm một số điểm làm mốc khác để đơn giản hơn công đoạn cài đặt nhưng phần đầu trước khi in này sẽ thay đổi nhiều tùy vào nhiều thết lập trong slicer cũng như máy in dùng Klipper hay Marlin.  
-    >> Nên để chắc chắn chính xác đoạn cần chèn thên script thì tạo một mốc đặc trưng như thế này sẽ là cách tối ưu.
+    >> Nên để chắc chắn chính xác đoạn cần chèn thên script thì tạo một mốc đặc trưng như thế này sẽ là cách tối ưu. -->
 
-* Cuối cùng.  
-Sau khi thực hiện các công đoạn cài đặt thì nhớ SAVE lại để dùng sau này.
+* SAVE lại để dùng sau này.
 
 ## HƯỚNG DẪN SỬ DỤNG
 
@@ -255,7 +312,11 @@ Sau khi thực hiện các công đoạn cài đặt thì nhớ SAVE lại để
 
     Khi mở file `.gcode` ra thì đường sẽ thấy đường purge được tạo ra như hình.
 
-    ![img](<IMG/Orca_Export-Gcode1.jpg>)
+    <!-- ![img](<IMG/Orca_Export-Gcode1.jpg>) -->
+
+    <p align="center">
+    <image src="./IMG/Orca_Export-Gcode1.jpg" width="480">
+    </p>
 
 * Trên Web UI (ví dụ như là [Mainsail](https://github.com/mainsail-crew/mainsail)) cũng sẽ cho xem trước file gcode trước khi in, sau khi upload lên máy in có thể mở trên Web UI để xem trực tiếp.
 
@@ -316,9 +377,13 @@ Ví dụ, `purge_margin` muốn chuyển thành 20mm thì chỉ cần `-purge_ma
 * **File xuất ra 0kb**
 
     Khi slicer xuất file không có lỗi gì, nhưng file xuất lại không có gì bên trong (dung lượng file là 0kb)  
-    Khả năng cao là thiếu mất phần `; Adaptive Purge START` trong phần thiết lập `Start G-code` ở slicer.  
+    Khả năng cao là do script không tìm được điểm để ghi chèn code vào file in. Xem cụ thể hơn về mốc để script chèn code mới ở [đây](#xác-định-vị-trí-điểm-sẽ-chèn-code-mới) hoặc về cấu trúc file gcode để script hoạt động tại [đây](#cấu-trúc-cần-thiết-của-file-g-code-tham-khảo-thêm).
     > Script trên cơ bản gọi là chèn phần code mới vào file .gcode mà slicer tạo ra nhưng thực tế là tạo một file code mới và ghi đè lên.  
-    > Do vậy khi thiếu đoạn đánh dấu `; Adaptive Purge START` thì script sẽ không tìm được đoạn để ghi gcode -> không có gcode sau khi sửa -> ghi đè một file không có gì vào file slicer xuất ra -> file trống không.
+    > Do vậy khi thiếu điểm mốc thì script sẽ không tìm được đoạn để ghi gcode -> không có gcode sau khi sửa -> ghi đè một file không có gì vào file slicer xuất ra -> file trống không.
+
+* **Các lỗi khác**
+
+    Thường nếu script không khoạt động như mong muốn, có thể do cấu trúc file gcode không được giống như mặc định Slicer xuất ra (có thể do tùy chỉnh từng dòng máy, hoặc phiên bản Slicer khác quá nhiều). Kiểm tra lại cấu trúc file gcode để script hoạt động tại [đây](#cấu-trúc-cần-thiết-của-file-g-code-tham-khảo-thêm)
 
 # CREDITS
 
