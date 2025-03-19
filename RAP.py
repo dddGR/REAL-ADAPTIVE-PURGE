@@ -35,9 +35,10 @@ def add_pruge_macro(content: list, macro: str) -> list:
     """ Find the line with G21 or G90 and insert the purge macro before it.
     :return: The modified gcode file with the purge macro inserted. """
 
+    marks = ('G20', 'G21', 'G90', 'G91')
+
     for idx, line in enumerate(content, 1):
-        if line.startswith('G90') or line.startswith('G21'):
-        # if mark_line in line:
+        if line.startswith(marks):
             idx -= 1
             content.insert(idx, macro)
             return content
@@ -204,7 +205,7 @@ def check_slicer(content: list) -> str:
             break
         
         # Stop reading the file if reaching the end of first block to avoid reading the whole file
-        elif ';TYPE:Custom' in line:
+        elif ';TYPE' in line:
             break
         
     return slicer
@@ -319,11 +320,11 @@ def get_print_zone_points(content: list) -> list:
 
     # Parameters
     collect_threshold: int = 4
-    collectable_types = (   'TYPE:External perimeter', 
-                            'TYPE:Support', 
-                            'TYPE:Brim', 
-                            'TYPE:Skirt', 
-                            'TYPE:Outer wall' )
+    collectable_types = (   ';TYPE:External perimeter', 
+                            ';TYPE:Support', 
+                            ';TYPE:Brim', 
+                            ';TYPE:Skirt', 
+                            ';TYPE:Outer wall' )
 
     first_layer_points: list = []
     object_points: list = []
@@ -370,11 +371,11 @@ def get_print_zone_points(content: list) -> list:
                     first_layer_points.clear()
 
                     # if new type is not the collect able type -> stop collecting
-                    if "TYPE" in line and not any(type in line for type in collectable_types):
+                    if 'TYPE' in line and not line.startswith(collectable_types):
                         recording = False
             
             # start collecting point when reach the collectable type
-            if any(type in line for type in collectable_types):
+            if line.startswith(collectable_types):
                 recording = True
 
 
@@ -634,7 +635,7 @@ def process_file(input_f: str) -> None:
     if args.verbose is True:
         print(f'First print Point is: {firstPoint}')
         for i in range(len(polygons)):
-            print(f'Print Object-{i+1} is: {polygons[i].vertices}')
+            print(f'Print Object_{i+1} is: {polygons[i].vertices}')
         print(f'Max travel speed is: {travel_speed}')
         print(f'Bed polygon is: {bed_polygon.vertices}')
 
