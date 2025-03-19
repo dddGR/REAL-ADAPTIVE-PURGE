@@ -216,8 +216,6 @@ Các thông số cần có trong file g-code (mở file .gcode bất kì, `Ctrl+
     > **Note1:** chú ý phải có dấu (") hai đầu và phải có đoạn cách giữa hai đường dẫn để phần mềm có thể đọc được.  
     > `DUONG-DAN-DEN-PYTHON` là nơi python cài trên máy.
     >> Để xác định đường dẫn của `python.exe` (nếu chưa biết), có thể sử dụng `command Prompt`.  
-    ***(windows)*** mở `command Prompt` (Start -> cmd -> Enter) hoặc (Win + R -> cmd -> Enter).  
-    Nhập vào:
     >> ***(windows)*** mở `command Prompt` (Start -> cmd -> Enter) hoặc (Win + R -> cmd -> Enter).  
     >> Nhập vào:
     >>
@@ -267,8 +265,6 @@ Các thông số cần có trong file g-code (mở file .gcode bất kì, `Ctrl+
     > **Note1:** chú ý phải có dấu (") hai đầu và phải có đoạn cách giữa hai đường dẫn để phần mềm có thể đọc được.  
     > `DUONG-DAN-DEN-PYTHON` là nơi python cài trên máy.
     >> Để xác định đường dẫn của `python.exe` (nếu chưa biết), có thể sử dụng `command Prompt`.  
-    ***(windows)*** mở `command Prompt` (Start -> cmd -> Enter) hoặc (Win + R -> cmd -> Enter).  
-    Nhập vào:
     >> ***(windows)*** mở `command Prompt` (Start -> cmd -> Enter) hoặc (Win + R -> cmd -> Enter).  
     >> Nhập vào:
     >>
