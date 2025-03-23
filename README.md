@@ -114,7 +114,7 @@ Tùy vào từng trường hợp cụ thể, thì script sẽ tự động tính
 >
 > **Note2:** mình cũng đã thử kha khá trường hợp có thể phát sinh lỗi, tuy nhiên do tính chất của việc Slicer đặt điểm in đầu hay là chọn đối tượng để in đầu tiên (mình không đi sâu vào phần code của từng Slicer nên cũng không nắm rõ) khá là random nên có thể, có thể sẽ có trường hợp lỗi chưa tính đến.
 
-#### XÁC ĐỊNH VỊ TRÍ ĐIỂM SẼ CHÈN CODE MỚI
+#### XÁC ĐỊNH ĐIỂM SẼ CHÈN CODE CỦA ĐƯỜNG PURGE
 
 Khi kiểm tra xong, script sẽ tìm đến đoạn code đầu tiên có `G90` hoặc `G91` hoặc `G20` hoặc `G21`.
 
@@ -154,7 +154,13 @@ Lúc này script sẽ tạo đoạn mã Purge-Line và ghi vào file gcode. File
     <image src="./IMG/InstallPython.jpg" width="420">
     </p>
 
-2. ***(Với riêng Klipper)*** Trong file `printer.cfg` -> mục `[extruder]`.  
+2. `Binary g-code` hiện tại không hỗ trợ xử lý file dạng này.  
+    Với file g-code, hiện tại chỉ hỗ trợ đọc file g-code dạng text thông thường.
+
+3. `G2/G3` [Arc Fitting](https://marlinfw.org/docs/gcode/G002-G003.html).  
+    Hiện tại code sẽ xác định đối tượng in dựa vào lệnh di chuyển (G0/G1) của gcode, việc tính toán thêm lệnh đường cong sẽ trở nên hơi phức tạp, dễ gây nhầm lẫm trong việc xác định vùng in.
+
+4. ***(Với riêng Klipper)*** Trong file `printer.cfg` -> mục `[extruder]`.  
 
     *"max_extrude_cross_section"* phải được set ít nhất là `5`.
 
@@ -325,9 +331,9 @@ Các thông số này đều được thiết lập sẵn, tuy nhiên có thể 
 | `-verbose`         | False            | Xuất thông tin khi chạy script. Thông số này không có tác dụng khi chạy script trong Slicer, nếu chỉ dùng ở Silcer thì bỏ qua thông số này. |
 | `-purge_height`    | 0.5mm            | Vị trí đầu in khi in Purge-Line, hoặc có thể hiểu là cao độ Z. |
 | `-tip_distance`    | 1.0mm            | Khoảng cách giữa đầu nhựa và đầu in trước khi Purge. Thường sẽ thiết lập bằng khoảng cách sợi nhựa sẽ rút lại lúc kết thúc file in trước. Thông số này không quá quan trọng, có thể để mặt định cũng không thay đổi nhiều. |
-| `-purge_margin`    | 5mm              | khoảng cách giữa điểm in Purge-Line và đối tượng in. Nếu thấy đoạn Purge hơi gần đối tượng có thể tăng khoảng cách này. |
+| `-purge_margin`    | 8mm              | khoảng cách giữa điểm in Purge-Line và đối tượng in. Nếu thấy đoạn Purge hơi gần đối tượng có thể tăng khoảng cách này. |
 | `-purge_length`    | 10mm             | Chiều dài của đoạn Purge-Line. Thay đổi nếu muốn đoạn Purge dài ra hoặc ngắn lại. |
-| `-purge_amount`    | 10mm             | Chiều dài sợi nhựa sẽ dùng để Purge. Dài hơn thì đầu in sẽ sạch hơn (Purge nhiều nhựa hơn) đồng thời cũng tốn nhựa hơn. |
+| `-purge_amount`    | 15mm             | Chiều dài sợi nhựa sẽ dùng để Purge. Dài hơn thì đầu in sẽ sạch hơn (Purge nhiều nhựa hơn) đồng thời cũng tốn nhựa hơn. |
 | `-flow_rate`       | 12mm3            | Lưu lượng khi purge. Nên chọn mức nhiều nhất có thể mà đầu in máy đang dùng có thể xuất được. vd: 12mm3 là giá trị tối đa cho đầu in E3D V6 theo nhà sản xuất. |
 
 > **Note:** Khi nhập tùy chỉnh thì chỉ cần giá trị chứ không cần đơn vị.  
@@ -373,7 +379,7 @@ Ví dụ, `purge_margin` muốn chuyển thành 20mm thì chỉ cần `-purge_ma
 * **File xuất ra 0kb**
 
     Khi slicer xuất file không có lỗi gì, nhưng file xuất lại không có gì bên trong (dung lượng file là 0kb)  
-    Khả năng cao là do script không tìm được điểm để ghi chèn code vào file in. Xem cụ thể hơn về mốc để script chèn code mới ở [đây](#xác-định-vị-trí-điểm-sẽ-chèn-code-mới) hoặc về cấu trúc file gcode để script hoạt động tại [đây](#cấu-trúc-cần-thiết-của-file-g-code-tham-khảo-thêm).
+    Khả năng cao là do script không tìm được điểm để ghi chèn code vào file in. Xem cụ thể hơn về mốc để script chèn code mới ở [đây](#xác-định-điểm-sẽ-chèn-code-của-đường-purge) hoặc về cấu trúc file gcode để script hoạt động tại [đây](#cấu-trúc-cần-thiết-của-file-g-code-tham-khảo-thêm).
     > Script trên cơ bản gọi là chèn phần code mới vào file .gcode mà slicer tạo ra nhưng thực tế là tạo một file code mới và ghi đè lên.  
     > Do vậy khi thiếu điểm mốc thì script sẽ không tìm được đoạn để ghi gcode -> không có gcode sau khi sửa -> ghi đè một file không có gì vào file slicer xuất ra -> file trống không.
 

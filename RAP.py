@@ -3,6 +3,97 @@ import re
 import math
 import argparse
 
+
+#######################################################################
+# MAIN FUNCTION #######################################################
+#######################################################################
+
+def process_file(input_f: str) -> None:
+    """ Main function to process the G-code file """
+
+    # read input file
+    content = read_file(input_f)
+
+    # check slicer used to generate the file (PrusaSlicer or OrcaSlicer)
+    slicer = check_slicer(content)
+
+    # Find all print related infos
+    bed_polygon: objectPolygon = get_print_info(content, slicer)
+
+    firstPoint = get_first_point(content)
+
+    polygons: list[objectPolygon] = get_polygon_from_first_layer(content)
+
+
+    if args.verbose is True:
+        print(f'First print Point is: {firstPoint}')
+        for i in range(len(polygons)):
+            print(f'Print Object_{i+1} is: {polygons[i].vertices}')
+        print(f'Max travel speed is: {travel_speed}')
+        print(f'Bed polygon is: {bed_polygon.vertices}')
+
+    ##_____________________________________________________________________________##
+    # Find point_1 (aka. Purge-Line end point)
+    point_0, point_1 = find_end_point(firstPoint, polygons[0])
+
+    # Check point_1 is inside or too close to another print objects
+    # If point_1 is inside another object, that mean object is too close to each other
+    # Convert all polygons to one polygon, and use that polygon to find new point_1
+    if len(polygons) > 1:
+        for i in range(1, len(polygons)):
+            if polygons[i].contains_point(point_1) or polygons[i].closest_point_to_polygon_edge(point_1)[2] < args.purge_margin:
+                polygons = [convert_all_polygons_to_one(polygons)]
+                point_0, point_1 = find_end_point(firstPoint, polygons[0])
+                break
+
+    # Find point_2 (aka. Purge-Line start point)
+    # calculate by offset by purge_length from point_1
+    # Check if first point inside print bed
+    if bed_polygon.contains_point(point_1):
+        
+        point_2 = find_point_opposite_side(point_1, point_0, args.purge_length)
+
+        # if point_2 is not inside print bed
+        # re-caculate point_2 to print along side bed-edge
+        if not bed_polygon.contains_point(point_2):
+            point_2 = bed_polygon.point_along_edge(point_1, args.purge_length)
+    
+    # if point_1 outside of the bed
+    # Purge-Line will be put on bed edge
+    else:
+        point_1, point_2 = purge_line_on_edge(point_1, bed_polygon)
+    
+    # if print multiple objects
+    # check if point_2 is inside or too close to another print objects
+    # if it does, re-caculate point_2
+    if len(polygons) > 1:
+        count: int = 0
+        flag: bool = True
+        while flag:
+            flag = False
+
+            for poly in polygons:
+                if poly.contains_point(point_2) or poly.closest_point_to_polygon_edge(point_2)[2] < args.purge_margin:
+                    point_2 = poly.point_along_edge(point_1, args.purge_length)
+                    flag = True
+                    count += 1
+                    break
+
+            if count > 5 and flag:
+                raise ValueError("Error: Purge-Line is too close to other objects")
+
+    ##_____________________________________________________________________________##
+    if args.verbose is True:
+        print(f'Purge-Line is from {point_2} to {point_1} and first point is {firstPoint}')
+
+    # Generate Purge gcode
+    purge_gcode = generate_purge_gcode(firstPoint, point_1, point_2)
+
+    # Insert Purge g-code into .gcode file and save it
+    modified_content = add_pruge_macro(content, purge_gcode)
+    write_file(input_f, modified_content)
+
+
 #######################################################################
 # PROCESS GCODE FILE ##################################################
 #######################################################################
@@ -214,73 +305,50 @@ def check_slicer(content: list) -> str:
 def get_print_info(content: list, slicer: str) -> object:
     """ Read gcode file to find all the print related info
     :return: Bed Polygon only, other parameters will be save as global variable """
+
+    global travel_speed, use_firmware_retraction, combined_skirt
+    bed_data = []
     
-    global combined_skirt
-    # found_params = 0
-    skirt_params = set()
+    # flag
+    skirt_found: bool = False
 
     # Read file in reverse to find config block first
-    # so script don't have to go through all the line
     n = len(content)
     while True:
         n -= 1
         line = content[n]
 
-        # Different route for each slicer
-        match slicer:
-            case 'PrusaSlicer':
-                # exit line
-                if 'prusaslicer_config = begin' in line or n <= 0:
-                    break
+        if slicer == 'PrusaSlicer':
+            if 'prusaslicer_config = begin' in line or n <= 0:
+                break
 
-                # check skirt for PrusaSlicer
-                if line.startswith('; skirts ') and int(line.split(' = ')[1]) > 0:
-                    combined_skirt = True                
+            if line.startswith('; skirts ') and int(line.split(' = ')[1]) > 0:
+                combined_skirt = True
+                continue
 
-            case 'OrcaSlicer':
-                # exit line
-                if 'CONFIG_BLOCK_START' in line or n <= 0:
-                    break
-
-                if len(skirt_params) < 2:
-                    # get skirt type used in gcode
-                    if line.startswith('; skirt_type '):
-                        skirt_params.add(line.split(' = ')[1])
-
-                    # get how many skirt loops used in gcode
-                    elif line.startswith('; skirt_loops '):
-                        skirt_params.add(int(line.split(' = ')[1]))
-                
-                elif combined_skirt is False:
-                    if 'combined' in skirt_params and 0 not in skirt_params:
-                        combined_skirt = True
+        elif slicer == 'OrcaSlicer':
+            if 'CONFIG_BLOCK_START' in line or n <= 0:
+                break
+            
+            # Only "combined_skirt" if type is "combined" and loops > 0
+            if (line.startswith('; skirt_type ') and line.split(' = ')[1] == 'combined') \
+                or (line.startswith('; skirt_loops ') and int(line.split(' = ')[1]) > 0):
+                combined_skirt = skirt_found
+                skirt_found = True
+                continue
         
         if line.startswith("; travel_speed "):
-            global travel_speed
-            travel_speed = float(line.split(' = ')[1])
-            continue
+            travel_speed = (float(line.split(' = ')[1]) * 60)
 
-        if line.startswith('; use_firmware_retraction '):
-            if int(line.split(' = ')[1]) == 1:
-                global use_firmware_retraction
-                use_firmware_retraction = True
-            continue
-        
+        elif line.startswith('; use_firmware_retraction '):
+            use_firmware_retraction = int(line.split(' = ')[1]) == 1
+
         # get Bed Polygon that defined in slicer
-        if line.startswith("; bed_shape "):
-            bed_data = line.split(' = ')[1]
-            # Split the string by commas to get individual points
-            bedPoints = bed_data.split(',')
-
-            bed_data: list = []
-
-            for point in bedPoints:
-                # Split by 'x' and convert to integers
-                x, y = map(int, point.split('x'))
-                bed_data.append((x, y))
-
-            bed_polygon = objectPolygon(bed_data)
-            continue
+        elif line.startswith("; bed_shape "):
+            bed_data = line.split(' = ')[1].split(',')
+            bed_points = list(map(lambda x: tuple(map(int, x.split('x'))), bed_data))
+            
+            bed_polygon = objectPolygon(bed_points)
 
     return bed_polygon
 
@@ -319,14 +387,14 @@ def get_print_zone_points(content: list) -> list:
     recording: bool = False
 
     # Parameters
-    collect_threshold: int = 4
+    collect_threshold: int = 3
     collectable_types = (   ';TYPE:External perimeter', 
                             ';TYPE:Support', 
                             ';TYPE:Brim', 
                             ';TYPE:Skirt', 
                             ';TYPE:Outer wall' )
 
-    first_layer_points: list = []
+    current_points: list = []
     object_points: list = []
 
 
@@ -340,8 +408,8 @@ def get_print_zone_points(content: list) -> list:
             else:
                 # if collecting point greater than minimum threshold
                 # append all the point to object_points
-                if len(first_layer_points) > collect_threshold:
-                    object_points.append(tuple(first_layer_points))
+                if len(current_points) > collect_threshold:
+                    object_points.append(tuple(current_points))
 
                 return object_points
         
@@ -357,25 +425,26 @@ def get_print_zone_points(content: list) -> list:
                     y_value = float(y_match.group(1)) if y_match else None
 
                     if x_value is not None and y_value is not None:
-                        first_layer_points.append((x_value, y_value))
+                        current_points.append((x_value, y_value))
 
                 # when change to another type
                 # 'M486' is PrusaSlicer object change command
-                elif line.startswith(";") or line.startswith('M486'):
+                # elif line.startswith(";") or line.startswith('M486'):
+                elif (line.startswith(";") or line.startswith('M486')) and not line.startswith(';WIDTH'):
                     # if collecting point greater than minimum threshold
                     # append all the point to object_points
-                    if len(first_layer_points) > collect_threshold:
-                        object_points.append(tuple(first_layer_points))
+                    if len(current_points) > collect_threshold:
+                        object_points.append(tuple(current_points))
                     
                     # and clear the list
-                    first_layer_points.clear()
+                    current_points.clear()
 
                     # if new type is not the collect able type -> stop collecting
                     if 'TYPE' in line and not line.startswith(collectable_types):
                         recording = False
             
             # start collecting point when reach the collectable type
-            if line.startswith(collectable_types):
+            elif line.startswith(collectable_types):
                 recording = True
 
 
@@ -401,12 +470,24 @@ def get_polygon_from_first_layer(content: list) -> list[object]:
     # Remove any nested polygons
     polygons = remove_nested_polygons(polygons)
 
+    if len(polygons) == 0:
+        raise ValueError("No object detected on first layer")
+
     return polygons
 
 
 #######################################################################
-# CACULATE FUNCTIONS ##################################################
+# POLYGON RELATED FUNCTIONS ###########################################
 #######################################################################
+
+def crossP(o, a, b):
+    """ Cross product of vector OA and OB.
+    A positive cross product indicates a counter-clockwise turn,
+    a negative cross product indicates a clockwise turn,
+    and a zero cross product indicates a collinear point. """
+
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
 
 def make_polygon(points: tuple) -> list:
     """ Take a list of points, make a polygon cover all them
@@ -418,14 +499,14 @@ def make_polygon(points: tuple) -> list:
     # Build the lower hull
     lower = []
     for p in points:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+        while len(lower) >= 2 and crossP(lower[-2], lower[-1], p) <= 0:
             lower.pop()
         lower.append(p)
 
     # Build the upper hull
     upper = []
     for p in reversed(points):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+        while len(upper) >= 2 and crossP(upper[-2], upper[-1], p) <= 0:
             upper.pop()
         upper.append(p)
 
@@ -433,16 +514,7 @@ def make_polygon(points: tuple) -> list:
     return lower[:-1] + upper[:-1]
 
 
-def cross(o, a, b):
-    """ Cross product of vector OA and OB.
-    A positive cross product indicates a counter-clockwise turn,
-    a negative cross product indicates a clockwise turn,
-    and a zero cross product indicates a collinear point. """
-
-    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-
-def remove_nested_polygons(polygons: list[object]) -> list[object]:
+def remove_nested_polygons(polygons: list[objectPolygon]) -> list[object]:
     """ Remove nested polygons from the list.
     :return: A list of non-nested polygons. """
 
@@ -451,8 +523,7 @@ def remove_nested_polygons(polygons: list[object]) -> list[object]:
     for i in range(len(polygons)):
         nested: bool = False
         for j in range(len(polygons)):
-            # take one point from polygon i to check if it is inside polygon j
-            # if it is, polygon i is nested inside polygon j
+            # take points from polygon i to check if it is inside polygon j
             if i != j and all(polygons[j].contains_point(vertex) for vertex in polygons[i].vertices):
                 nested = True
                 break
@@ -524,7 +595,7 @@ def purge_line_on_edge(pointA: tuple, bed_polygon: objectPolygon) -> tuple[tuple
     
     :return: Purge-Line start, end points. """
 
-    bed: list = bed_polygon.vertices
+    bed: tuple = bed_polygon.vertices
 
     # get all the corners and mid-point of bed edge
     points_can_purge = []
@@ -561,11 +632,11 @@ def purge_line_on_edge(pointA: tuple, bed_polygon: objectPolygon) -> tuple[tuple
     # if pointY inside bed (closest_point must be mid-point of the edge)
     # Purge-Line is from pointY -> closest_point
     if bed_polygon.contains_point(pointY):
-        return closest_point, pointY
+        return pointY, closest_point
     # otherwise, revert Purge-Line direction
     else:
         pointY = find_point_opposite_side(closest_point, pointY, args.purge_length)
-        return pointY, closest_point
+        return closest_point, pointY
 
 
 def find_end_point(firstPoint: tuple, polygon: objectPolygon) -> tuple[tuple, tuple]:
@@ -610,84 +681,8 @@ def convert_all_polygons_to_one(polygons: list[object]) -> object:
     return objectPolygon(make_polygon(all_points))
 
 
-#######################################################################
-# MAIN FUNCTION #######################################################
-#######################################################################
-
-def process_file(input_f: str) -> None:
-    """ Main function to process the G-code file """
-
-    # read input file
-    content = read_file(input_f)
-
-    # check slicer used to generate the file (PrusaSlicer or OrcaSlicer)
-    slicer = check_slicer(content)
-
-    # Find all print related infos
-    bed_polygon: objectPolygon = get_print_info(content, slicer)
-
-    firstPoint = get_first_point(content)
-
-    polygons: list[objectPolygon] = get_polygon_from_first_layer(content)
 
 
-    # output print-infos
-    if args.verbose is True:
-        print(f'First print Point is: {firstPoint}')
-        for i in range(len(polygons)):
-            print(f'Print Object_{i+1} is: {polygons[i].vertices}')
-        print(f'Max travel speed is: {travel_speed}')
-        print(f'Bed polygon is: {bed_polygon.vertices}')
-
-
-    # Find point_1 (aka. Purge-Line end point)
-    point_0, point_1 = find_end_point(firstPoint, polygons[0])
-
-    # Check point_1 is inside or too close to another print objects
-    if len(polygons) > 1:
-        for i in range(1, len(polygons)):
-            # if point_in_polygon(point_1, polygons[i]):
-            if polygons[i].contains_point(point_1) or polygons[i].closest_point_to_polygon_edge(point_1)[2] < args.purge_margin:
-                # If point_1 is inside another object, that mean object is too close to each other
-                # Convert all polygons to one polygon, and use that polygon to find new point_1
-                polygons = [convert_all_polygons_to_one(polygons)]
-                # add new polygon to another list to make it compatible with function check point_2 bellow
-                point_0, point_1 = find_end_point(firstPoint, polygons[0])
-                break
-
-    # Find point_2 (aka. Purge-Line start point)
-    # Check if first point inside print bed
-    if bed_polygon.contains_point(point_1):
-        # other point of Pure-Line is calculate by offset by purge_length from point_1
-        point_2 = find_point_opposite_side(point_1, point_0, args.purge_length)
-
-        # if point_2 is not inside print bed
-        if not bed_polygon.contains_point(point_2):
-            # re-caculate point_2
-            # point_2 = point_along_edge(point_1, bed_polygon, args.purge_length)
-            point_2 = bed_polygon.point_along_edge(point_1, args.purge_length)
-
-        # if print multiple objects, check if point_2 is inside or too close to another print objects
-        if len(polygons) > 1:
-            for i in range(1, len(polygons)):
-                if polygons[i].contains_point(point_2) or polygons[i].closest_point_to_polygon_edge(point_2)[2] < args.purge_margin:
-                    # re-caculate point_2
-                    point_2 = polygons[i].point_along_edge(point_1, args.purge_length)
-    
-    # if point_1 outside of the bed, Purge-Line will be put on bed edge
-    else:
-        point_1, point_2 = purge_line_on_edge(point_1, bed_polygon)
-
-
-    if args.verbose is True:
-        print(f'Purge-Line is from {point_2} to {point_1} and first point is {firstPoint}')
-
-    # Generate Purge gcode
-    purge_gcode = generate_purge_gcode(firstPoint, point_1, point_2)
-
-    # Insert Purge g-code into .gcode file and save it
-    modified_content = add_pruge_macro(content, purge_gcode)
-    write_file(input_f, modified_content)
 
 
 if __name__ == '__main__':
@@ -698,9 +693,9 @@ if __name__ == '__main__':
     parser.add_argument("-verbose", type=bool, default=False, help="Output info, (default: False)")
     parser.add_argument("-purge_height", type=float, default=0.5, help="Z position (in mm) of nozzle during purge, (default: 0.5mm)")
     parser.add_argument("-tip_distance", type=float, default=1.0, help="Distance between tip of filament and nozzle before purge. Should be similar to PRINT_END final retract amount.")
-    parser.add_argument("-purge_margin", type=int, default=5, help="Distance the purge will be in front of the print area, (default: 5mm)")
+    parser.add_argument("-purge_margin", type=int, default=8, help="Distance the purge will be in front of the print area, (default: 5mm)")
     parser.add_argument("-purge_length", type=int, default=10, help="The length of purge line, (default: 10mm)")
-    parser.add_argument("-purge_amount", type=int, default=10, help="Amount of filament to be purged prior to printing, (default: 10mm)")
+    parser.add_argument("-purge_amount", type=int, default=15, help="Amount of filament to be purged prior to printing, (default: 10mm)")
     parser.add_argument("-flow_rate", type=int, default=12, help="Flow rate of purge in mm3/s, (default: 12)")
 
     args = parser.parse_args()
