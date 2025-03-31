@@ -26,16 +26,12 @@ extern bool g_UseFirmwareRetraction;
 // Travel speed extract from gcode file, if not found, default value is 9000
 extern int g_TravelSpeed;
 
-
 enum SlicerType 
 {
     NOT_SUPPORTED,
     ORCA_SLICER,
     PRUSA_SLICER
 };
-
-// Slicer type, if not find in gcode file, NOT_SUPPORTED value will throw an error
-extern SlicerType g_Slicer;
 
 
 #endif

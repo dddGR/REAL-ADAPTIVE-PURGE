@@ -66,11 +66,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    checkSlicer(content);
+    // cout << "Slicer: " << g_Slicer << endl;
 
-    // cout << "Slicer: " << global_Slicer << endl;
-
-    switch (g_Slicer) {
+    switch (checkSlicer(content))
+    {
         case ORCA_SLICER:
             get_info_orca(content);
             break;

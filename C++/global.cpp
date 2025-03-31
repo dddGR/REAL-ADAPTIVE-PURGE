@@ -19,6 +19,3 @@ bool g_CombineSkirt = false;
 bool g_UseFirmwareRetraction = false;
 
 int g_TravelSpeed = 9000;
-
-SlicerType g_Slicer = NOT_SUPPORTED;
-

@@ -24,7 +24,7 @@ bool lineStartWith(const std::string_view prefix, const std::string_view line) n
 
 
 // Check slicer is used to generate G-code file
-void checkSlicer(const std::vector<std::string>& content);
+SlicerType checkSlicer(const std::vector<std::string> &content);
 
 
 // Extract value (int) from a line
